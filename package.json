@@ -9,14 +9,15 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "lucide-react": "latest",
     "next": "latest",
     "react": "^18",
-    "react-dom": "^18",
-    "lucide-react": "latest"
+    "react-dom": "^18"
   },
   "devDependencies": {
-    "tailwindcss": "latest",
+    "@tailwindcss/postcss": "^4.3.1",
+    "autoprefixer": "latest",
     "postcss": "latest",
-    "autoprefixer": "latest"
+    "tailwindcss": "latest"
   }
 }
