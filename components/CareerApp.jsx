@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ChevronRight, Upload, FileText, LogOut, Zap, Check, ArrowRight, Menu, X } from 'lucide-react';
+import { FileText, LogOut, Zap, Check, ArrowRight, Upload } from 'lucide-react';
 
 const PROMPTS = {
   resumeFromInfo: (userInfo) => `
@@ -63,12 +63,11 @@ Make it compelling and specific to this role.
 `
 };
 
-async function callClaude(apiKey, model, maxTokens, prompt) {
+async function callClaude(model, maxTokens, prompt) {
   const response = await fetch('/api/claude', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      apiKey,
       model,
       max_tokens: maxTokens,
       messages: [{ role: 'user', content: prompt }]
@@ -85,16 +84,10 @@ export default function CareerApp() {
   const [user, setUser] = useState(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [apiKey, setApiKey] = useState('');
-  const [showApiKeySetup, setShowApiKeySetup] = useState(false);
 
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
-    const savedApiKey = localStorage.getItem('apiKey');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-      if (savedApiKey) setApiKey(savedApiKey);
-    }
+    if (savedUser) setUser(JSON.parse(savedUser));
   }, []);
 
   const handleSignup = (e) => {
@@ -110,7 +103,6 @@ export default function CareerApp() {
       localStorage.setItem('user', JSON.stringify(newUser));
       setUser(newUser);
       setCurrentPage('dashboard');
-      setShowApiKeySetup(true);
     }
   };
 
@@ -133,13 +125,6 @@ export default function CareerApp() {
     setPassword('');
   };
 
-  const saveApiKey = () => {
-    if (apiKey) {
-      localStorage.setItem('apiKey', apiKey);
-      setShowApiKeySetup(false);
-    }
-  };
-
   if (currentPage === 'landing') return <LandingPage setCurrentPage={setCurrentPage} />;
   if (currentPage === 'signup') return (
     <AuthPage isSignup email={email} setEmail={setEmail} password={password} setPassword={setPassword} onSubmit={handleSignup} setCurrentPage={setCurrentPage} />
@@ -148,13 +133,18 @@ export default function CareerApp() {
     <AuthPage isSignup={false} email={email} setEmail={setEmail} password={password} setPassword={setPassword} onSubmit={handleLogin} setCurrentPage={setCurrentPage} />
   );
   if (currentPage === 'resume-builder' && user) return (
-    <ResumeBuilder user={user} apiKey={apiKey} setShowApiKeySetup={setShowApiKeySetup} onComplete={(resumeText) => { localStorage.setItem(`resume_${user.id}`, resumeText); setCurrentPage('dashboard'); }} onLogout={handleLogout} setCurrentPage={setCurrentPage} />
+    <ResumeBuilder
+      user={user}
+      onComplete={(resumeText) => { localStorage.setItem(`resume_${user.id}`, resumeText); setCurrentPage('dashboard'); }}
+      onLogout={handleLogout}
+      setCurrentPage={setCurrentPage}
+    />
   );
   if (currentPage === 'tailor' && user) return (
-    <TailorApp user={user} apiKey={apiKey} setShowApiKeySetup={setShowApiKeySetup} onLogout={handleLogout} setCurrentPage={setCurrentPage} />
+    <TailorApp user={user} onLogout={handleLogout} setCurrentPage={setCurrentPage} />
   );
   if (currentPage === 'dashboard' && user) return (
-    <Dashboard user={user} apiKey={apiKey} showApiKeySetup={showApiKeySetup} setShowApiKeySetup={setShowApiKeySetup} saveApiKey={saveApiKey} apiKeyInput={apiKey} setApiKeyInput={setApiKey} onLogout={handleLogout} setCurrentPage={setCurrentPage} />
+    <Dashboard user={user} onLogout={handleLogout} setCurrentPage={setCurrentPage} />
   );
 
   return null;
@@ -234,7 +224,7 @@ function LandingPage({ setCurrentPage }) {
             </button>
           </div>
           <p className="text-sm text-blue-100">
-            <strong>Privacy first.</strong> We don't sell your data. Period.
+            <strong>Privacy first.</strong> We don&apos;t sell your data. Period.
           </p>
         </div>
       </section>
@@ -269,7 +259,7 @@ function AuthPage({ isSignup, email, setEmail, password, setPassword, onSubmit, 
   );
 }
 
-function Dashboard({ user, apiKey, showApiKeySetup, setShowApiKeySetup, saveApiKey, apiKeyInput, setApiKeyInput, onLogout, setCurrentPage }) {
+function Dashboard({ user, onLogout, setCurrentPage }) {
   const savedResume = localStorage.getItem(`resume_${user.id}`);
   const usageThisMonth = user.freetierUsedThisMonth || 0;
 
@@ -285,94 +275,74 @@ function Dashboard({ user, apiKey, showApiKeySetup, setShowApiKeySetup, saveApiK
         </div>
       </nav>
 
-      <div className="max-w-4xl mx-auto px-6 py-12">
-        <div className="space-y-8">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Welcome back</h1>
-            <p className="text-slate-600">{user.email}</p>
+      <div className="max-w-4xl mx-auto px-6 py-12 space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Welcome back</h1>
+          <p className="text-slate-600">{user.email}</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="border border-slate-200 rounded-lg p-8 space-y-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="text-xl font-bold mb-1">Your Resume</h2>
+                <p className="text-sm text-slate-600">{savedResume ? 'Resume saved ✓' : 'No resume yet'}</p>
+              </div>
+              <FileText className="w-8 h-8 text-blue-600" />
+            </div>
+            {!savedResume ? (
+              <button onClick={() => setCurrentPage('resume-builder')} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition">
+                Create Resume
+              </button>
+            ) : (
+              <button onClick={() => setCurrentPage('resume-builder')} className="w-full bg-slate-200 hover:bg-slate-300 text-slate-900 font-semibold py-2 rounded-lg transition">
+                Edit Resume
+              </button>
+            )}
           </div>
 
-          {showApiKeySetup && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-              <div className="bg-white rounded-lg max-w-md w-full p-8 space-y-4">
-                <h2 className="text-xl font-bold">Set up Anthropic API Key</h2>
+          <div className="border border-blue-200 rounded-lg p-8 space-y-4 bg-blue-50">
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="text-xl font-bold mb-1">Tailor for a Job</h2>
                 <p className="text-sm text-slate-600">
-                  To use this app, you'll need an Anthropic API key. Get one at{' '}
-                  <a href="https://console.anthropic.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                    console.anthropic.com
-                  </a>
+                  {usageThisMonth === 0 ? <>1 free tailor available this month</> : <>Free tailors used this month: {usageThisMonth}/1</>}
                 </p>
-                <input type="password" placeholder="sk-ant-..." value={apiKeyInput} onChange={(e) => setApiKeyInput(e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <button onClick={saveApiKey} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg">
-                  Save & Continue
-                </button>
               </div>
+              <Zap className="w-8 h-8 text-blue-600" />
             </div>
-          )}
+            {savedResume ? (
+              <button onClick={() => setCurrentPage('tailor')} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2">
+                Tailor Resume <ArrowRight className="w-4 h-4" />
+              </button>
+            ) : (
+              <p className="text-sm text-slate-600">Create a resume first to start tailoring.</p>
+            )}
+          </div>
+        </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="border border-slate-200 rounded-lg p-8 space-y-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="text-xl font-bold mb-1">Your Resume</h2>
-                  <p className="text-sm text-slate-600">{savedResume ? 'Resume saved ✓' : 'No resume yet'}</p>
-                </div>
-                <FileText className="w-8 h-8 text-blue-600" />
-              </div>
-              {!savedResume ? (
-                <button onClick={() => setCurrentPage('resume-builder')} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition">
-                  Create Resume
-                </button>
-              ) : (
-                <button onClick={() => setCurrentPage('resume-builder')} className="w-full bg-slate-200 hover:bg-slate-300 text-slate-900 font-semibold py-2 rounded-lg transition">
-                  Edit Resume
-                </button>
-              )}
+        <div className="bg-slate-100 rounded-lg p-8 space-y-4">
+          <h3 className="font-bold">Your Plan</h3>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className="text-slate-600">Free tailors per month</p>
+              <p className="font-bold text-lg">1</p>
             </div>
-
-            <div className="border border-blue-200 rounded-lg p-8 space-y-4 bg-blue-50">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="text-xl font-bold mb-1">Tailor for a Job</h2>
-                  <p className="text-sm text-slate-600">
-                    {usageThisMonth === 0 ? <>1 free tailor available this month</> : <>Free tailors used this month: {usageThisMonth}/1</>}
-                  </p>
-                </div>
-                <Zap className="w-8 h-8 text-blue-600" />
-              </div>
-              {savedResume ? (
-                <button onClick={() => setCurrentPage('tailor')} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2">
-                  Tailor Resume <ArrowRight className="w-4 h-4" />
-                </button>
-              ) : (
-                <p className="text-sm text-slate-600">Create a resume first to start tailoring.</p>
-              )}
+            <div>
+              <p className="text-slate-600">Job market analysis</p>
+              <p className="font-bold">—</p>
             </div>
           </div>
-
-          <div className="bg-slate-100 rounded-lg p-8 space-y-4">
-            <h3 className="font-bold">Your Plan</h3>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-slate-600">Free tailors per month</p>
-                <p className="font-bold text-lg">1</p>
-              </div>
-              <div>
-                <p className="text-slate-600">Job market analysis</p>
-                <p className="font-bold">—</p>
-              </div>
-            </div>
-            <button className="w-full border border-blue-600 text-blue-600 font-semibold py-2 rounded-lg hover:bg-blue-50 transition">
-              Upgrade to Unlimited ($9.99/mo)
-            </button>
-          </div>
+          <button className="w-full border border-blue-600 text-blue-600 font-semibold py-2 rounded-lg hover:bg-blue-50 transition">
+            Upgrade to Unlimited ($9.99/mo)
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-function ResumeBuilder({ user, apiKey, setShowApiKeySetup, onComplete, onLogout, setCurrentPage }) {
+function ResumeBuilder({ user, onComplete, onLogout, setCurrentPage }) {
   const [step, setStep] = useState('method');
   const [userInfo, setUserInfo] = useState({
     fullName: '',
@@ -385,28 +355,26 @@ function ResumeBuilder({ user, apiKey, setShowApiKeySetup, onComplete, onLogout,
   });
   const [generatedResume, setGeneratedResume] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (event) => {
-        onComplete(event.target?.result || '');
-      };
+      reader.onload = (event) => onComplete(event.target?.result || '');
       reader.readAsText(file);
     }
   };
 
   const generateResume = async () => {
-    if (!apiKey) { setShowApiKeySetup(true); return; }
     setLoading(true);
+    setError('');
     try {
-      const text = await callClaude(apiKey, 'claude-opus-4-6', 2000, PROMPTS.resumeFromInfo(userInfo));
+      const text = await callClaude('claude-opus-4-6', 2000, PROMPTS.resumeFromInfo(userInfo));
       setGeneratedResume(text);
       setStep('preview');
     } catch {
-      alert('Error generating resume. Check your API key.');
-      setShowApiKeySetup(true);
+      setError('Something went wrong generating your resume. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -428,8 +396,8 @@ function ResumeBuilder({ user, apiKey, setShowApiKeySetup, onComplete, onLogout,
               <label className="cursor-pointer block">
                 <Upload className="w-12 h-12 text-slate-400 mx-auto mb-3" />
                 <p className="font-semibold mb-1">Upload Existing Resume</p>
-                <p className="text-sm text-slate-600">Drag and drop or click to select</p>
-                <input type="file" accept=".txt,.pdf" onChange={handleFileUpload} className="hidden" />
+                <p className="text-sm text-slate-600">Drag and drop or click to select (.txt files)</p>
+                <input type="file" accept=".txt" onChange={handleFileUpload} className="hidden" />
               </label>
             </div>
             <div className="relative">
@@ -478,22 +446,23 @@ function ResumeBuilder({ user, apiKey, setShowApiKeySetup, onComplete, onLogout,
             </div>
             <div className="space-y-3">
               <label className="block text-sm font-semibold">Work Experience</label>
-              <p className="text-sm text-slate-600 mb-2">List your jobs, roles, dates, and key accomplishments (use bullet points)</p>
+              <p className="text-sm text-slate-600 mb-2">List your jobs, roles, dates, and key accomplishments</p>
               <textarea
                 value={userInfo.experience[0].description}
                 onChange={(e) => { const newExp = [...userInfo.experience]; newExp[0].description = e.target.value; setUserInfo({ ...userInfo, experience: newExp }); }}
-                placeholder={`e.g., Forklift Operator at Warehouse Co | 2020-2022\n- Operated forklifts safely and efficiently\n- Managed inventory counts\n- Trained new operators`}
+                placeholder={`e.g., Forklift Operator at Warehouse Co | 2020-2022\n- Operated forklifts safely and efficiently\n- Managed inventory counts`}
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-32 font-mono text-sm"
               />
             </div>
             <div className="space-y-3">
               <label className="block text-sm font-semibold">Skills</label>
-              <textarea value={userInfo.skills} onChange={(e) => setUserInfo({ ...userInfo, skills: e.target.value })} placeholder="e.g., Forklift certification, Inventory management, Customer service, Microsoft Office, Leadership" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-20" />
+              <textarea value={userInfo.skills} onChange={(e) => setUserInfo({ ...userInfo, skills: e.target.value })} placeholder="e.g., Forklift certification, Inventory management, Customer service, Microsoft Office" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-20" />
             </div>
             <div className="space-y-3">
               <label className="block text-sm font-semibold">Education</label>
               <textarea value={userInfo.education} onChange={(e) => setUserInfo({ ...userInfo, education: e.target.value })} placeholder={`e.g., B.S. in Finance, Western Governors University, 2025\nHigh School Diploma, 2016`} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-20" />
             </div>
+            {error && <p className="text-red-600 text-sm">{error}</p>}
             <button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white font-semibold py-3 rounded-lg transition">
               {loading ? 'Generating Resume...' : 'Generate Resume'}
             </button>
@@ -536,7 +505,7 @@ function ResumeBuilder({ user, apiKey, setShowApiKeySetup, onComplete, onLogout,
             </div>
           </div>
           <div className="bg-white border border-slate-200 rounded-lg p-8">
-            <div className="prose prose-sm max-w-none whitespace-pre-wrap text-sm leading-relaxed font-mono">{generatedResume}</div>
+            <div className="whitespace-pre-wrap text-sm leading-relaxed font-mono">{generatedResume}</div>
           </div>
           <button onClick={() => onComplete(generatedResume)} className="w-full mt-8 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition">
             Save & Continue
@@ -547,34 +516,34 @@ function ResumeBuilder({ user, apiKey, setShowApiKeySetup, onComplete, onLogout,
   }
 }
 
-function TailorApp({ user, apiKey, setShowApiKeySetup, onLogout, setCurrentPage }) {
+function TailorApp({ user, onLogout, setCurrentPage }) {
   const [jobPosting, setJobPosting] = useState('');
   const [tailoredResume, setTailoredResume] = useState('');
   const [coverLetter, setCoverLetter] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [showResults, setShowResults] = useState(false);
   const savedResume = localStorage.getItem(`resume_${user.id}`) || '';
 
   const handleTailor = async (e) => {
     e.preventDefault();
-    if (!apiKey) { setShowApiKeySetup(true); return; }
     if (!jobPosting.trim()) { alert('Please paste a job posting'); return; }
 
     setLoading(true);
+    setError('');
     try {
-      const tailored = await callClaude(apiKey, 'claude-opus-4-6', 2000, PROMPTS.tailorResume(savedResume, jobPosting));
+      const tailored = await callClaude('claude-opus-4-6', 2000, PROMPTS.tailorResume(savedResume, jobPosting));
       setTailoredResume(tailored);
 
-      const letter = await callClaude(apiKey, 'claude-opus-4-6', 1000, PROMPTS.generateCoverLetter(savedResume, jobPosting, JSON.stringify({ email: user.email })));
+      const letter = await callClaude('claude-opus-4-6', 1000, PROMPTS.generateCoverLetter(savedResume, jobPosting, JSON.stringify({ email: user.email })));
       setCoverLetter(letter);
 
       const updatedUser = { ...user, freetierUsedThisMonth: (user.freetierUsedThisMonth || 0) + 1 };
       localStorage.setItem('user', JSON.stringify(updatedUser));
       setShowResults(true);
-    } catch (error) {
-      console.error(error);
-      alert('Error tailoring resume. Check your API key.');
-      setShowApiKeySetup(true);
+    } catch (err) {
+      console.error(err);
+      setError('Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -595,7 +564,7 @@ function TailorApp({ user, apiKey, setShowApiKeySetup, onLogout, setCurrentPage 
               <h2 className="text-2xl font-bold">Your Tailored Resume</h2>
               <button onClick={() => { navigator.clipboard.writeText(tailoredResume); alert('Copied!'); }} className="text-sm bg-slate-600 hover:bg-slate-700 text-white px-3 py-1 rounded">Copy</button>
             </div>
-            <div className="bg-white border border-slate-200 rounded-lg p-8 prose prose-sm max-w-none">
+            <div className="bg-white border border-slate-200 rounded-lg p-8">
               <div className="whitespace-pre-wrap text-sm font-mono leading-relaxed">{tailoredResume}</div>
             </div>
           </div>
@@ -630,9 +599,9 @@ function TailorApp({ user, apiKey, setShowApiKeySetup, onLogout, setCurrentPage 
         <form onSubmit={handleTailor} className="space-y-6">
           <div className="space-y-3">
             <label className="block text-sm font-semibold">Job Posting</label>
-            <p className="text-xs text-slate-600 mb-2">Paste the full job posting or description</p>
             <textarea value={jobPosting} onChange={(e) => setJobPosting(e.target.value)} placeholder="Paste the job posting here..." className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-64 text-sm" required />
           </div>
+          {error && <p className="text-red-600 text-sm">{error}</p>}
           <button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2">
             {loading ? 'Tailoring...' : 'Generate Tailored Resume & Cover Letter'}
             {!loading && <Zap className="w-4 h-4" />}
