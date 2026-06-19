@@ -31,3 +31,5 @@ test_import.py
 
 .vercel
 .env*
+
+# Vercel local
