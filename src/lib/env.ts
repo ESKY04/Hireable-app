@@ -21,10 +21,18 @@ export const env = {
   // Stripe
   stripeSecretKey: requireEnv("STRIPE_SECRET_KEY"),
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
-  stripePriceId: process.env.STRIPE_PRO_PRICE_ID ?? "",
+  stripePriceCoverLetter: process.env.STRIPE_PRICE_COVER_LETTER ?? "",
+  stripePriceResume: process.env.STRIPE_PRICE_RESUME ?? "",
+  stripePriceFullSuite: process.env.STRIPE_PRICE_FULL_SUITE ?? "",
 
   // Anthropic
   anthropicApiKey: requireEnv("ANTHROPIC_API_KEY"),
+
+  // Resend
+  resendApiKey: process.env.RESEND_API_KEY ?? "",
+
+  // Admin
+  adminUserIds: (process.env.ADMIN_USER_IDS ?? "").split(",").filter(Boolean),
 
   // App
   appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",

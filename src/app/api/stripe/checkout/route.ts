@@ -1,37 +1,31 @@
-/**
- * POST /api/stripe/checkout
- * Creates a Stripe Checkout session for the Pro plan upgrade.
- */
-
 import { auth, currentUser } from "@clerk/nextjs/server"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { stripe, PRO_PRICE_ID } from "@/lib/stripe"
+import { stripe, PACKAGES, type PackageKey } from "@/lib/stripe"
 
-export async function POST() {
+export async function POST(req: Request) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const clerkUser = await currentUser()
-  if (!clerkUser) return NextResponse.json({ error: "User not found" }, { status: 404 })
+  const body = await req.json()
+  const { orderId, packageType } = body as { orderId: string; packageType: PackageKey }
 
-  const email = clerkUser.emailAddresses[0]?.emailAddress
+  if (!orderId || !packageType || !(packageType in PACKAGES)) {
+    return NextResponse.json({ error: "orderId and valid packageType required" }, { status: 400 })
+  }
+
+  const pkg = PACKAGES[packageType]
+
+  const clerkUser = await currentUser()
+  const email = clerkUser?.emailAddresses[0]?.emailAddress
 
   let user = await prisma.user.findUnique({ where: { clerkId: userId } })
-
-  // Ensure DB user exists
   if (!user) {
     user = await prisma.user.create({
       data: { clerkId: userId, email: email ?? `${userId}@clerk.local` },
     })
   }
 
-  // Already on Pro — send to portal instead
-  if (user.plan !== "FREE") {
-    return NextResponse.json({ error: "Already on Pro plan" }, { status: 400 })
-  }
-
-  // Reuse or create Stripe customer
   let customerId = user.stripeId
   if (!customerId) {
     const customer = await stripe.customers.create({
@@ -44,14 +38,27 @@ export async function POST() {
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
 
+  const lineItems = pkg.priceId
+    ? [{ price: pkg.priceId, quantity: 1 as const }]
+    : [
+        {
+          price_data: {
+            currency: "usd",
+            product_data: { name: `Hireable – ${pkg.label}` },
+            unit_amount: pkg.priceCents,
+          },
+          quantity: 1 as const,
+        },
+      ]
+
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
-    mode: "subscription",
+    mode: "payment",
     payment_method_types: ["card"],
-    line_items: [{ price: PRO_PRICE_ID, quantity: 1 }],
-    success_url: `${appUrl}/billing?success=1`,
-    cancel_url: `${appUrl}/billing?canceled=1`,
-    metadata: { clerkId: userId },
+    line_items: lineItems,
+    success_url: `${appUrl}/orders/${orderId}?success=1`,
+    cancel_url: `${appUrl}/request?canceled=1`,
+    metadata: { orderId, clerkId: userId },
   })
 
   return NextResponse.json({ url: session.url })

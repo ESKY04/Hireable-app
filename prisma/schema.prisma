@@ -8,25 +8,47 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-model User {
-  id            String   @id @default(cuid())
-  clerkId       String   @unique
-  email         String   @unique
-  name          String?
-  stripeId              String?
-  stripeSubscriptionId  String?
-  plan                  Plan     @default(FREE)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  resumes       Resume[]
-  coverLetters  CoverLetter[]
+enum UserRole {
+  CLIENT
+  OPERATOR
 }
 
 enum Plan {
   FREE
   PRO
   ENTERPRISE
+}
+
+enum PackageType {
+  COVER_LETTER
+  RESUME
+  FULL_SUITE
+}
+
+enum OrderStatus {
+  SUBMITTED
+  IN_QUEUE
+  IN_PROGRESS
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+model User {
+  id                   String   @id @default(cuid())
+  clerkId              String   @unique
+  email                String   @unique
+  name                 String?
+  role                 UserRole @default(CLIENT)
+  stripeId             String?
+  stripeSubscriptionId String?
+  plan                 Plan     @default(FREE)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  resumes      Resume[]
+  coverLetters CoverLetter[]
+  orders       Order[]
 }
 
 model Resume {
@@ -58,4 +80,40 @@ model CoverLetter {
   updatedAt DateTime @updatedAt
 
   @@index([userId])
+}
+
+model Order {
+  id                String      @id @default(cuid())
+  clientId          String
+  client            User        @relation(fields: [clientId], references: [id])
+  packageType       PackageType
+  jobTitle          String
+  company           String
+  jobDescription    String      @db.Text
+  location          String
+  experienceLevel   String
+  credentials       String      @db.Text
+  currentResumeText String      @db.Text
+  status            OrderStatus @default(SUBMITTED)
+  priceCents        Int
+  stripePaymentId   String?
+  operatorNotes     String?     @db.Text
+  createdAt         DateTime    @default(now())
+  deliveredAt       DateTime?
+
+  deliverable Deliverable?
+
+  @@index([clientId])
+  @@index([status])
+}
+
+model Deliverable {
+  id                 String    @id @default(cuid())
+  orderId            String    @unique
+  order              Order     @relation(fields: [orderId], references: [id])
+  resumeContent      String?   @db.Text
+  coverLetterContent String?   @db.Text
+  salaryReport       Json?
+  approvedAt         DateTime?
+  updatedAt          DateTime  @updatedAt
 }

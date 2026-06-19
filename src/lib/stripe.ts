@@ -4,10 +4,22 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-04-10",
 })
 
-export const PRO_PRICE_ID = process.env.STRIPE_PRO_PRICE_ID!
-
-export const PLAN_LIMITS = {
-  FREE: { resumes: 3, coverLetters: 10 },
-  PRO: { resumes: Infinity, coverLetters: Infinity },
-  ENTERPRISE: { resumes: Infinity, coverLetters: Infinity },
+export const PACKAGES = {
+  COVER_LETTER: {
+    priceCents: 500,
+    label: "Cover Letter",
+    priceId: process.env.STRIPE_PRICE_COVER_LETTER,
+  },
+  RESUME: {
+    priceCents: 800,
+    label: "Resume Rewrite",
+    priceId: process.env.STRIPE_PRICE_RESUME,
+  },
+  FULL_SUITE: {
+    priceCents: 1000,
+    label: "Full Suite",
+    priceId: process.env.STRIPE_PRICE_FULL_SUITE,
+  },
 } as const
+
+export type PackageKey = keyof typeof PACKAGES
